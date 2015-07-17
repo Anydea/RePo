@@ -1,0 +1,205 @@
+heat_template_version: 2013-05-23
+
+description: Cloud Stack
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image used for Web Server
+    default: centos-6.5_x86_64-2015-01-27-v6
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: Micro-Small
+  key:
+    type: string
+    label: Key Name
+    description: Name of a KeyPair to enable SSH access to the instance
+    default: heat_key
+  intranet:
+    type: string
+    label: Intranet
+    description: Intranet to attach to
+    default: 2d84eaa4-8b81-4dc8-9897-dd8ef4719f8b
+  port_number:
+    type: number
+    label: Port Number
+    description: Port number to proxy
+    default: 443
+  volume_size:
+    type: string
+    label: volume size
+    description: Volume size
+    default: 5
+  shared_ip:
+    type: string
+    label: shared ip
+    description: shared IP address
+    default: 10.1.0.201
+
+resources:
+  volume1:
+    type: OS::Cinder::Volume
+    properties:
+      image: { get_param: image }
+      size: 5
+
+  volume2:
+    type: OS::Cinder::Volume
+    properties:
+      image: { get_param: image }
+      size: 5
+
+  base_private_net:
+    type: OS::Neutron::Net
+    properties:
+      name: base_private_net
+
+  base_private_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network_id: { get_resource: base_private_net }
+      cidr: 10.1.0.0/24
+      gateway_ip: 10.1.0.1
+      allocation_pools:
+        - start: 10.1.0.2
+          end: 10.1.0.200
+
+#  router:
+#    type: OS::Neutron::Router
+#    properties:
+#     name: router1
+#      external_gateway_info:
+#        - network: public-floating-601
+
+#  gateway:
+#    type: OS::Neutron::RouterGateway
+#    properties:
+#      network_id: ca80ff29-4f29-49a5-aa22-549f31b09268
+#      router_id: { get_resource: router }
+
+  routerinterface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: c4488b3e-3889-4b16-b02f-6630dd63824e
+      subnet_id: { get_resource: base_private_subnet }
+
+  virtual_ip_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+      fixed_ips:
+        - ip_address: {get_param : shared_ip }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: ca80ff29-4f29-49a5-aa22-549f31b09268
+      port_id: { get_resource: virtual_ip_port }
+
+
+
+  server1_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+#      allowed_address_pairs: 
+#        - ip_address: { get_param : shared_ip }
+      fixed_ips:
+        - subnet_id: { get_resource: base_private_subnet }
+
+  server2_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+#      allowed_address_pairs: 
+#        - ip_address: { get_param : shared_ip }
+      fixed_ips:
+        - subnet_id: { get_resource: base_private_subnet }
+
+  server3_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: base_private_subnet }
+
+  server4_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: base_private_subnet }
+
+  server5_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_resource: base_private_net }
+      fixed_ips:
+        - subnet_id: { get_resource: base_private_subnet }
+
+  base_server_1:
+    type: OS::Nova::Server
+    properties:
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks: 
+         - port: { get_resource: server1_port }
+      block_device_mapping: 
+         - device_name: vda
+           delete_on_termination: true
+           volume_id: { get_resource: volume1 }
+           volume_size: '5'
+
+  base_server_2:
+    type: OS::Nova::Server
+    properties:
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks: 
+         - port: { get_resource: server2_port }
+      block_device_mapping: 
+         - device_name: vda
+           delete_on_termination: true
+           volume_id: { get_resource: volume2 }
+           volume_size: '5'
+
+  base_server_3:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks:
+         - port: { get_resource: server3_port}
+
+  base_server_4:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks:
+         - port: { get_resource: server4_port}
+
+  base_server_5:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks:
+         - port: { get_resource: server5_port}
+
+#outputs:
+#  instance_all:
+#    description: all of instance
+#    value: { get_attr: [base_server_1, show] }
+#  instance_ip:
+#    description: IP address of the instance
+#    value: { get_attr: [base_server_1, first_address] }
+#  novainstance:
+#    description: The networks port of instance
+#    value: { get_resource: base_server_1 }

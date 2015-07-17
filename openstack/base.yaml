@@ -1,0 +1,91 @@
+heat_template_version: 2014-10-16
+
+description: Cloud Stack
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image used for Web Server
+    default: centos-6.5_x86_64-2015-01-27-v6
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: Micro-Small
+  key:
+    type: string
+    label: Key Name
+    description: Name of a KeyPair to enable SSH access to the instance
+    default: heat_key
+  intranet:
+    type: string
+    label: Intranet
+    description: Intranet to attach to
+    default: 7283d693-fc44-4afd-b21a-64da259d7211
+  port_number:
+    type: number
+    label: Port Number
+    description: Port number to proxy
+    default: 443
+
+resources:
+ # wait_condition:
+ #   type: OS::Heat::WaitCondition
+ #   properties: 
+ #     handle: { get_resource: wait_handle }
+ #     count: 1
+ #     timeout: 600
+
+ # wait_handle:
+ #   type: OS::Heat::WaitConditionHandle
+  volume:
+    type: OS::Cinder::Volume
+    properties:
+      image: { get_param: image }
+      size: 5
+
+
+  first_instance:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: {get_param: key}
+      networks:
+         - uuid: { get_param: intranet}
+      user_data:
+        str_replace:
+          param:
+ #           wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
+          template: |
+            #!/bin/sh -ex
+            echo "HELLO WORLD"
+  #          wc_notify --data-binary '{"status": "SUCCESS"}'
+
+  vol_att:
+     type: OS::Cinder::VolumeAttachment
+     properties:
+       instance_uuid: { get_resource: first_instance }
+       volume_id: { get_resource: volume }
+       mountpoint: /dev/vdb
+ # security_group:
+ #   type: OS::Neutron::SecurityGroup
+ #   properties:
+ #     name: web_server_security_group
+ #     rules:
+ #       - protocol: tcp
+ #         port_range_min: { get_param: port_number }
+ #         port_range_max: { get_param: port_number }
+
+
+outputs:
+  instance_all:
+    description: all of instance
+    value: { get_attr: [first_instance, show] }
+  instance_ip:
+    description: IP address of the instance
+    value: { get_attr: [first_instance, first_address] }
+  novainstance:
+    description: The networks port of instance
+    value: { get_resource: first_instance }
